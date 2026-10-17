@@ -29,3 +29,6 @@ app.use("/api", (_req, res) => {
 });
 
 app.use(errorHandler);
+
+// Vercel busca la app como export por defecto (en local se arranca desde index.ts)
+export default app;

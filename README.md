@@ -29,7 +29,8 @@ npm run dev                 # http://localhost:3000
 
 | Variable | Descripción |
 |---|---|
-| `DATABASE_URL` | Conexión a Postgres (por defecto la del `docker-compose.yml`) |
+| `DATABASE_URL` | Conexión a Postgres (por defecto la del `docker-compose.yml`). En Neon, la URL *pooled* |
+| `DIRECT_URL` | Solo producción: URL directa de Neon (sin pooler) para `prisma migrate deploy` |
 | `PORT` | Puerto de la API (3000) |
 | `CORS_ORIGIN` | URL del frontend (http://localhost:5173) |
 | `IGDB_CLIENT_ID` | Client ID de tu app en https://dev.twitch.tv/console/apps |
@@ -109,3 +110,15 @@ Cómo funciona:
 - **Sincronizar**: `GetOwnedGames` (juegos y minutos jugados) y, para cada juego jugado con logros, `GetPlayerAchievements` + `GetSchemaForGame` (nombres e iconos en español) + `GetGlobalAchievementPercentagesForApp` (rareza). Los logros solo se vuelven a pedir si has jugado ese juego desde la última vez.
 - **Emparejar con IGDB**: con `external_games` (fuente 1 = Steam) se pasa del appId de Steam al juego de IGDB, con portada incluida.
 - **Importar**: crea las entradas con las horas de Steam y plataforma `PC (Microsoft Windows)`.
+
+## Despliegue (Vercel + Neon)
+
+El backend es un proyecto de Vercel aparte (Express sin configuración: se convierte en una función). El frontend reenvía `/api/*` a este proyecto, así que para el navegador todo está en el mismo dominio y la cookie de sesión funciona sin CORS.
+
+1. **Neon**: crea un proyecto en la región `AWS us-east-1` (la misma que Vercel por defecto). Copia la URL *pooled* y la directa.
+2. **Vercel**: importa este repo. Variables de entorno:
+   - `DATABASE_URL`: URL pooled de Neon
+   - `DIRECT_URL`: URL directa de Neon
+   - `APP_URL` y `CORS_ORIGIN`: URL del frontend (p. ej. `https://videogames-list-front.vercel.app`)
+   - `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET`, `STEAM_API_KEY`
+3. Cada despliegue ejecuta `npm run vercel-build`: genera el cliente de Prisma, aplica las migraciones pendientes y comprueba los tipos.
