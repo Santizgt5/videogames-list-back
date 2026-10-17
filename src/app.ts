@@ -7,6 +7,7 @@ import { authRouter } from "./routes/auth.routes.js";
 import { gamesRouter } from "./routes/games.routes.js";
 import { libraryRouter } from "./routes/library.routes.js";
 import { steamRouter } from "./routes/steam.routes.js";
+import { statsRouter } from "./routes/stats.routes.js";
 
 export const app = express();
 
@@ -21,6 +22,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/games", requireUser, gamesRouter);
 app.use("/api/library", requireUser, libraryRouter);
 app.use("/api/steam", steamRouter);
+app.use("/api/stats", requireUser, statsRouter);
 
 app.use("/api", (_req, res) => {
   res.status(404).json({ error: "Ruta no encontrada" });

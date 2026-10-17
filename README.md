@@ -54,6 +54,7 @@ npm run dev                 # http://localhost:3000
 | POST | `/api/library` | Añadir: `{ gameId, status?, score?, hoursPlayed?, platform?, startedAt?, finishedAt?, notes?, favorite? }` |
 | PATCH | `/api/library/:id` | Editar cualquiera de esos campos |
 | DELETE | `/api/library/:id` | Quitar de la lista |
+| GET | `/api/stats` | Estadísticas: totales, terminados por año, géneros, notas, más jugados y logros de Steam |
 | GET | `/api/steam` | Estado de la conexión con Steam |
 | GET | `/api/steam/connect` | Redirige a Steam para iniciar sesión (se abre como página) |
 | GET | `/api/steam/callback` | Vuelta desde Steam: verifica el inicio de sesión y enlaza la cuenta |
@@ -63,7 +64,7 @@ npm run dev                 # http://localhost:3000
 | GET | `/api/steam/achievements/:igdbId` | Logros de Steam de un juego, o `null` |
 | POST | `/api/steam/import` | Añadir a la lista: `{ items: [{ appId, status }] }` |
 
-Todo lo de `/api/games`, `/api/library` y `/api/steam` necesita sesión (si no, responde 401).
+Todo lo de `/api/games`, `/api/library`, `/api/stats` y `/api/steam` necesita sesión (si no, responde 401).
 
 Estados: `PLAYING`, `COMPLETED`, `PLAN_TO_PLAY`, `ON_HOLD`, `DROPPED`. Nota de 1 a 10. Fechas en formato `YYYY-MM-DD`.
 
