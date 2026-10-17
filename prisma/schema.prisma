@@ -16,11 +16,32 @@ enum GameStatus {
 }
 
 model User {
-  id        Int            @id @default(autoincrement())
-  email     String         @unique
-  name      String?
-  createdAt DateTime       @default(now())
-  entries   LibraryEntry[]
+  id           Int            @id @default(autoincrement())
+  email        String         @unique
+  username     String         @unique
+  /// scrypt "salt:hash". Vacío = cuenta de antes del login, la adopta el primer registro.
+  passwordHash String
+  createdAt    DateTime       @default(now())
+  entries      LibraryEntry[]
+  sessions     Session[]
+
+  /// Cuenta de Steam enlazada (SteamID64)
+  steamId       String?     @unique
+  steamName     String?
+  steamAvatar   String?
+  steamSyncedAt DateTime?
+  steamGames    SteamGame[]
+}
+
+model Session {
+  /// Token aleatorio que va en la cookie
+  id        String   @id
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 /// Copia local de la info de IGDB. El id es el mismo id de IGDB.
@@ -57,4 +78,27 @@ model LibraryEntry {
 
   @@unique([userId, gameId])
   @@index([userId, status])
+}
+
+/// Un juego de tu biblioteca de Steam (lo que devuelve GetOwnedGames + tus logros)
+model SteamGame {
+  userId               Int
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appId                Int
+  name                 String
+  playtimeMinutes      Int
+  playtime2Weeks       Int       @default(0)
+  lastPlayedAt         DateTime?
+  /// Juego de IGDB equivalente (null si IGDB no lo conoce)
+  igdbId               Int?
+  igdbCoverUrl         String?
+  achievementsTotal    Int       @default(0)
+  achievementsUnlocked Int       @default(0)
+  /// [{ apiName, name, description, icon, iconGray, unlockedAt, percent }]
+  achievements         Json?
+  /// Cuándo se leyeron los logros por última vez
+  achievementsSyncedAt DateTime?
+
+  @@id([userId, appId])
+  @@index([userId, igdbId])
 }

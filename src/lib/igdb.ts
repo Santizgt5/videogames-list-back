@@ -171,3 +171,39 @@ export async function getGame(id: number): Promise<GameDetail> {
     publishers: companies.filter((c) => c.publisher).map((c) => c.company.name),
   };
 }
+
+/** Varios juegos por id en una sola consulta (máx. 500) */
+export async function getGamesByIds(ids: number[]): Promise<GameSummary[]> {
+  if (ids.length === 0) return [];
+  const games = await igdb<IgdbGame[]>(
+    "games",
+    `fields ${SUMMARY_FIELDS}; where id = (${ids.join(",")}); limit 500;`,
+  );
+  return games.map(toSummary);
+}
+
+const STEAM_SOURCE = 1; // external_game_sources: 1 = Steam
+
+/** appId de Steam -> juego de IGDB (id y portada). Los que IGDB no conoce no aparecen. */
+export async function igdbGamesForSteamApps(appIds: number[]) {
+  const map = new Map<number, { igdbId: number; coverUrl: string | null }>();
+  for (let i = 0; i < appIds.length; i += 500) {
+    const chunk = appIds.slice(i, i + 500);
+    const rows = await igdb<{ uid: string; game?: { id: number; cover?: IgdbImage } }[]>(
+      "external_games",
+      `fields uid, game.id, game.cover.image_id;
+       where external_game_source = ${STEAM_SOURCE} & uid = (${chunk.map((id) => `"${id}"`).join(",")});
+       limit 500;`,
+    );
+    for (const r of rows) {
+      const appId = Number(r.uid);
+      // Un appId puede salir varias veces (ediciones); nos quedamos con el primero
+      if (!r.game || map.has(appId)) continue;
+      map.set(appId, {
+        igdbId: r.game.id,
+        coverUrl: r.game.cover ? imageUrl(r.game.cover.image_id, "cover_big") : null,
+      });
+    }
+  }
+  return map;
+}

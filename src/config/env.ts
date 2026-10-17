@@ -7,7 +7,9 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
   IGDB_CLIENT_ID: z.string().default(""),
   IGDB_CLIENT_SECRET: z.string().default(""),
-  DEFAULT_USER_EMAIL: z.string().min(1).default("me@local"),
+  STEAM_API_KEY: z.string().default(""),
+  /** URL desde la que el navegador abre la app (Steam vuelve aquí tras iniciar sesión) */
+  APP_URL: z.string().default("http://localhost:5173"),
 });
 
 const parsed = envSchema.safeParse(process.env);

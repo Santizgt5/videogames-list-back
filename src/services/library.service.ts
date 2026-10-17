@@ -1,7 +1,7 @@
 import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { HttpError } from "../lib/httpError.js";
-import { getGame } from "../lib/igdb.js";
+import { getGame, type GameSummary } from "../lib/igdb.js";
 import type { AddEntryInput, ListQuery, UpdateEntryInput } from "../schemas/library.schema.js";
 
 const toDate = (d: string | null | undefined) =>
@@ -55,10 +55,9 @@ export async function getEntry(userId: number, id: number) {
   return entry;
 }
 
-/** Guarda (o refresca) la info del juego desde IGDB en nuestra tabla Game */
-async function cacheGame(gameId: number) {
-  const g = await getGame(gameId);
-  const data = {
+/** Fila de nuestra tabla Game a partir de la info de IGDB */
+export function gameRow(g: GameSummary) {
+  return {
     slug: g.slug,
     name: g.name,
     coverUrl: g.coverUrl,
@@ -68,6 +67,12 @@ async function cacheGame(gameId: number) {
     genres: g.genres,
     platforms: g.platforms,
   };
+}
+
+/** Guarda (o refresca) la info del juego desde IGDB en nuestra tabla Game */
+async function cacheGame(gameId: number) {
+  const g = await getGame(gameId);
+  const data = gameRow(g);
   return prisma.game.upsert({ where: { id: g.id }, update: data, create: { id: g.id, ...data } });
 }
 
