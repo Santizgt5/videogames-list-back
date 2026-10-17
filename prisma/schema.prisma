@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum GameStatus {
+  PLAYING
+  COMPLETED
+  PLAN_TO_PLAY
+  ON_HOLD
+  DROPPED
+}
+
+model User {
+  id        Int            @id @default(autoincrement())
+  email     String         @unique
+  name      String?
+  createdAt DateTime       @default(now())
+  entries   LibraryEntry[]
+}
+
+/// Copia local de la info de RAWG. El id es el mismo id de RAWG.
+model Game {
+  id         Int            @id
+  slug       String         @unique
+  name       String
+  coverUrl   String?
+  released   DateTime?      @db.Date
+  metacritic Int?
+  genres     String[]
+  platforms  String[]
+  updatedAt  DateTime       @updatedAt
+  entries    LibraryEntry[]
+}
+
+model LibraryEntry {
+  id          Int        @id @default(autoincrement())
+  userId      Int
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameId      Int
+  game        Game       @relation(fields: [gameId], references: [id])
+  status      GameStatus @default(PLAN_TO_PLAY)
+  score       Int?       /// 1-10
+  hoursPlayed Float?
+  platform    String?
+  startedAt   DateTime?  @db.Date
+  finishedAt  DateTime?  @db.Date
+  notes       String?
+  favorite    Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([userId, gameId])
+  @@index([userId, status])
+}
