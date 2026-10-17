@@ -150,20 +150,8 @@ async function doSync(userId: number) {
     });
   });
 
-  // 3. Horas de los juegos que ya están en tu lista (solo suben, por si también juegas fuera de Steam)
-  const linked = await prisma.steamGame.findMany({
-    where: { userId, igdbId: { not: null }, playtimeMinutes: { gt: 0 } },
-    select: { igdbId: true, playtimeMinutes: true },
-  });
-  const entries = await prisma.libraryEntry.findMany({
-    where: { userId, gameId: { in: linked.map((l) => l.igdbId!) } },
-    select: { id: true, gameId: true, hoursPlayed: true },
-  });
-  const hoursByGame = new Map(linked.map((l) => [l.igdbId!, toHours(l.playtimeMinutes)]));
-  const hourUpdates = entries
-    .filter((e) => hoursByGame.get(e.gameId)! > (e.hoursPlayed ?? 0))
-    .map((e) => prisma.libraryEntry.update({ where: { id: e.id }, data: { hoursPlayed: hoursByGame.get(e.gameId)! } }));
-  await prisma.$transaction(hourUpdates);
+  // 3. Horas y fechas de los juegos que ya están en tu lista
+  const entriesUpdated = await fillEntriesFromSteam(userId);
 
   await prisma.user.update({
     where: { id: userId },
@@ -179,7 +167,7 @@ async function doSync(userId: number) {
     matched: igdb.size,
     achievementsChecked: toCheck.length - failed,
     achievementsFailed: failed,
-    hoursUpdated: hourUpdates.length,
+    entriesUpdated,
   };
 }
 
@@ -264,5 +252,71 @@ export async function importGames(userId: number, { items }: ImportInput) {
       })),
     skipDuplicates: true,
   });
+  await fillEntriesFromSteam(userId);
   return { added: result.count };
+}
+
+/* ---------- Rellenar la lista con datos de Steam ---------- */
+
+/** Fecha (YYYY-MM-DD en la zona horaria del servidor) lista para una columna @db.Date */
+function dateOnly(iso: string) {
+  return new Date(new Date(iso).toLocaleDateString("en-CA"));
+}
+
+/** Primer y último logro conseguidos (con fecha) */
+function achievementRange(achievements: Achievement[]) {
+  const times = achievements
+    .flatMap((a) => (a.unlockedAt ? [a.unlockedAt] : []))
+    .sort();
+  return times.length ? { first: dateOnly(times[0]!), last: dateOnly(times.at(-1)!) } : null;
+}
+
+const FINISHED_STATUSES = new Set(["COMPLETED", "DROPPED"]);
+
+/**
+ * Actualiza las entradas de tu lista que están en Steam:
+ * - Horas: solo suben (por si también juegas fuera de Steam).
+ * - Empezado: fecha del primer logro, si está vacío.
+ * - Terminado (Completado/Abandonado): fecha del último logro, si está vacío.
+ * Nunca pisa fechas que hayas puesto a mano. Devuelve cuántas entradas cambiaron.
+ */
+async function fillEntriesFromSteam(userId: number) {
+  const steamGames = await prisma.steamGame.findMany({
+    where: { userId, igdbId: { not: null } },
+    select: { igdbId: true, playtimeMinutes: true, achievements: true },
+  });
+  // Varias versiones en Steam pueden ser el mismo juego en IGDB (p. ej. Metro Exodus y su Enhanced Edition):
+  // se suman las horas y se juntan los logros
+  const byGame = new Map<number, { playtimeMinutes: number; achievements: Achievement[] }>();
+  for (const g of steamGames) {
+    const acc = byGame.get(g.igdbId!) ?? { playtimeMinutes: 0, achievements: [] };
+    acc.playtimeMinutes += g.playtimeMinutes;
+    acc.achievements.push(...((g.achievements ?? []) as unknown as Achievement[]));
+    byGame.set(g.igdbId!, acc);
+  }
+
+  const entries = await prisma.libraryEntry.findMany({
+    where: { userId, gameId: { in: [...byGame.keys()] } },
+    select: { id: true, gameId: true, status: true, hoursPlayed: true, startedAt: true, finishedAt: true },
+  });
+
+  const updates = entries.flatMap((e) => {
+    const g = byGame.get(e.gameId)!;
+    const range = achievementRange(g.achievements);
+    const data: { hoursPlayed?: number; startedAt?: Date; finishedAt?: Date } = {};
+
+    const hours = toHours(g.playtimeMinutes);
+    if (hours > (e.hoursPlayed ?? 0)) data.hoursPlayed = hours;
+
+    // No ponemos un inicio posterior al fin (ni al revés) si una de las dos la pusiste tú
+    if (range && !e.startedAt && !(e.finishedAt && range.first > e.finishedAt)) data.startedAt = range.first;
+    const start = data.startedAt ?? e.startedAt;
+    if (range && !e.finishedAt && FINISHED_STATUSES.has(e.status) && !(start && range.last < start)) {
+      data.finishedAt = range.last;
+    }
+
+    return Object.keys(data).length ? [prisma.libraryEntry.update({ where: { id: e.id }, data })] : [];
+  });
+  await prisma.$transaction(updates);
+  return updates.length;
 }
