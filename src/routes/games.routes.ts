@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { getGame, searchGames } from "../lib/rawg.js";
+import { getGame, searchGames } from "../lib/igdb.js";
 import { entriesForGames } from "../services/library.service.js";
 
 export const gamesRouter = Router();
@@ -22,7 +22,7 @@ gamesRouter.get("/search", async (req, res) => {
   });
 });
 
-// GET /api/games/:id  (id de RAWG)
+// GET /api/games/:id  (id de IGDB)
 gamesRouter.get("/:id", async (req, res) => {
   const { id } = z.object({ id: z.coerce.number().int().positive() }).parse(req.params);
   const [game, owned] = await Promise.all([getGame(id), entriesForGames(req.userId, [id])]);

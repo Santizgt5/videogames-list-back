@@ -5,7 +5,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   PORT: z.coerce.number().default(3000),
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
-  RAWG_API_KEY: z.string().default(""),
+  IGDB_CLIENT_ID: z.string().default(""),
+  IGDB_CLIENT_SECRET: z.string().default(""),
   DEFAULT_USER_EMAIL: z.string().min(1).default("me@local"),
 });
 

@@ -1,7 +1,7 @@
 import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { HttpError } from "../lib/httpError.js";
-import { getGame } from "../lib/rawg.js";
+import { getGame } from "../lib/igdb.js";
 import type { AddEntryInput, ListQuery, UpdateEntryInput } from "../schemas/library.schema.js";
 
 const toDate = (d: string | null | undefined) =>
@@ -55,15 +55,16 @@ export async function getEntry(userId: number, id: number) {
   return entry;
 }
 
-/** Guarda (o refresca) la info del juego desde RAWG en nuestra tabla Game */
+/** Guarda (o refresca) la info del juego desde IGDB en nuestra tabla Game */
 async function cacheGame(gameId: number) {
   const g = await getGame(gameId);
   const data = {
     slug: g.slug,
     name: g.name,
     coverUrl: g.coverUrl,
+    backgroundUrl: g.backgroundUrl,
     released: g.released ? new Date(g.released) : null,
-    metacritic: g.metacritic,
+    criticScore: g.criticScore,
     genres: g.genres,
     platforms: g.platforms,
   };

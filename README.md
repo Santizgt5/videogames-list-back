@@ -3,14 +3,22 @@
 API de **Backlog**, una lista personal de videojuegos (estilo MyAnimeList): busca juegos, añádelos a tu lista, marca su estado y ponles nota, horas y notas.
 
 **Stack**: Node + Express 5 + TypeScript + Prisma 7 + PostgreSQL (Docker) + Zod.
-Los datos de los juegos vienen de la [API de RAWG](https://rawg.io/apidocs).
+Los datos y portadas de los juegos vienen de [IGDB](https://api-docs.igdb.com/) (Twitch).
+
+## Credenciales de IGDB
+
+1. Activa la verificación en dos pasos en tu cuenta de Twitch.
+2. Registra una aplicación en https://dev.twitch.tv/console/apps (redirect URL: `http://localhost`, categoría: Application Integration, tipo: Confidential).
+3. Copia el Client ID y genera un Client Secret.
+
+El backend pide y renueva solo el token de acceso.
 
 ## Puesta en marcha
 
 Requisitos: Node 20+ y Docker.
 
 ```bash
-cp .env.example .env        # y pon tu RAWG_API_KEY
+cp .env.example .env        # y pon tus credenciales de IGDB
 docker compose up -d        # PostgreSQL en localhost:5432
 npm install                 # también genera el cliente de Prisma
 npx prisma migrate deploy   # crea las tablas
@@ -24,7 +32,8 @@ npm run dev                 # http://localhost:3000
 | `DATABASE_URL` | Conexión a Postgres (por defecto la del `docker-compose.yml`) |
 | `PORT` | Puerto de la API (3000) |
 | `CORS_ORIGIN` | URL del frontend (http://localhost:5173) |
-| `RAWG_API_KEY` | Key gratuita de https://rawg.io/apidocs |
+| `IGDB_CLIENT_ID` | Client ID de tu app en https://dev.twitch.tv/console/apps |
+| `IGDB_CLIENT_SECRET` | Client Secret de esa misma app |
 | `DEFAULT_USER_EMAIL` | Usuario único mientras no haya login |
 
 ## Endpoints
@@ -32,8 +41,8 @@ npm run dev                 # http://localhost:3000
 | Método | Ruta | Qué hace |
 |---|---|---|
 | GET | `/api/health` | Estado del servidor |
-| GET | `/api/games/search?q=zelda&page=1` | Busca en RAWG y marca los que ya tienes |
-| GET | `/api/games/:rawgId` | Detalle de un juego |
+| GET | `/api/games/search?q=zelda&page=1` | Busca en IGDB y marca los que ya tienes |
+| GET | `/api/games/:igdbId` | Detalle de un juego (resumen, desarrolladora, editora) |
 | GET | `/api/library?status=&favorite=&q=&sort=&order=` | Tu lista. `sort`: updated, added, name, score, hours, released |
 | GET | `/api/library/stats` | Totales, nota media, horas y conteo por estado |
 | GET | `/api/library/:id` | Una entrada de tu lista |
@@ -46,11 +55,11 @@ Estados: `PLAYING`, `COMPLETED`, `PLAN_TO_PLAY`, `ON_HOLD`, `DROPPED`. Nota de 1
 ## Estructura
 
 ```
-prisma/schema.prisma      Modelos: User, Game (caché de RAWG), LibraryEntry
+prisma/schema.prisma      Modelos: User, Game (caché de IGDB), LibraryEntry
 src/
   app.ts                  Configuración de Express y rutas
   config/env.ts           Validación de variables de entorno
-  lib/rawg.ts             Cliente de la API de RAWG
+  lib/igdb.ts             Cliente de IGDB (incluye el token de Twitch)
   middleware/             Usuario actual y manejo de errores
   routes/                 /api/games y /api/library
   schemas/                Validación de entrada con Zod

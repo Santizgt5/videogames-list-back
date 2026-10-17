@@ -12,7 +12,7 @@ app.use(cors({ origin: env.CORS_ORIGIN }));
 app.use(express.json());
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, rawgConfigured: Boolean(env.RAWG_API_KEY) });
+  res.json({ ok: true, igdbConfigured: Boolean(env.IGDB_CLIENT_ID && env.IGDB_CLIENT_SECRET) });
 });
 
 app.use("/api", currentUser);

@@ -23,18 +23,19 @@ model User {
   entries   LibraryEntry[]
 }
 
-/// Copia local de la info de RAWG. El id es el mismo id de RAWG.
+/// Copia local de la info de IGDB. El id es el mismo id de IGDB.
 model Game {
-  id         Int            @id
-  slug       String         @unique
-  name       String
-  coverUrl   String?
-  released   DateTime?      @db.Date
-  metacritic Int?
-  genres     String[]
-  platforms  String[]
-  updatedAt  DateTime       @updatedAt
-  entries    LibraryEntry[]
+  id            Int            @id
+  slug          String         @unique
+  name          String
+  coverUrl      String?
+  backgroundUrl String?
+  released      DateTime?      @db.Date
+  criticScore   Int? /// Nota de la crítica en IGDB (0-100)
+  genres        String[]
+  platforms     String[]
+  updatedAt     DateTime       @updatedAt
+  entries       LibraryEntry[]
 }
 
 model LibraryEntry {
@@ -44,7 +45,7 @@ model LibraryEntry {
   gameId      Int
   game        Game       @relation(fields: [gameId], references: [id])
   status      GameStatus @default(PLAN_TO_PLAY)
-  score       Int?       /// 1-10
+  score       Int? /// 1-10
   hoursPlayed Float?
   platform    String?
   startedAt   DateTime?  @db.Date
